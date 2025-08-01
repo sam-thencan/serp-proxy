@@ -3,122 +3,151 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Local SERP Scraper MVP v0.5</title>
+  <title>Local SERP Scraper MVP v0.6</title>
   <style>
     :root {
-      --radius: 10px;
-      --shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.08);
-      --border: #e5e7eb;
-      --bg: #f9f9fb;
-      --card-bg: #fff;
-      --muted: #6b7280;
-      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      font-family: system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      --radius: 12px;
+      --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.08);
+      --border: #e6e8ec;
+      --bg: #f2f5fa;
+      --card-bg: #ffffff;
+      --muted: #6c7280;
+      --text: #1f2d3a;
+      --radius-sm: 6px;
+      --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: "Inter", system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
     }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --card-bg: #1f2238;
+        --border: #2a3355;
+        --text: #e4e9ff;
+        --muted: #8a94b0;
+      }
+      body {
+        color: var(--text);
+        background: var(--bg);
+      }
+      table {
+        background: transparent;
+      }
+      th {
+        background: #1f274d;
+      }
+      td, th {
+        border-color: var(--border);
+      }
+      pre {
+        background: #0e1a3b;
+      }
+      input {
+        background: #1f274d;
+        border: 1px solid #2f3563;
+        color: var(--text);
+      }
+      button {
+        filter: none;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       background: var(--bg);
       margin: 0;
       padding: 0;
       min-height: 100vh;
+      color: var(--text);
     }
     .container {
-      max-width: 960px;
+      max-width: 1300px;
       margin: 32px auto;
-      padding: 0 16px;
+      padding: 0 18px;
     }
     h1 {
-      font-size: 28px;
+      font-size: 32px;
       margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      box-shadow: var(--shadow);
+      margin-top: 16px;
+      position: relative;
+      border: 1px solid var(--border);
     }
     .controls {
       display: flex;
-      gap: 12px;
+      gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 12px;
-      align-items: flex-start;
+      margin-bottom: 8px;
+      align-items: center;
     }
     .field {
-      flex: 1 1 200px;
+      flex: 1 1 220px;
       display: flex;
       flex-direction: column;
       position: relative;
     }
     label {
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 600;
       margin-bottom: 4px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #374151;
+      letter-spacing: 0.8px;
+      color: var(--muted);
     }
     input {
-      padding: 12px 14px;
+      padding: 14px 16px;
       font-size: 16px;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--radius-sm);
       background: #fff;
       outline: none;
       transition: var(--transition);
       width: 100%;
-      box-sizing: border-box;
+      font-weight: 500;
     }
     input:focus {
-      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
       border-color: #3b82f6;
     }
     button {
-      padding: 12px 18px;
+      padding: 14px 22px;
       border: none;
-      background: #2563eb;
+      background: #3751ff;
       color: white;
       font-weight: 600;
-      border-radius: var(--radius);
+      border-radius: var(--radius-sm);
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
       transition: var(--transition);
+      font-size: 14px;
+    }
+    button.secondary {
+      background: #10b981;
     }
     button:hover {
-      filter: brightness(1.05);
+      filter: brightness(1.07);
     }
     .meta {
       display: flex;
-      gap: 12px;
+      gap: 14px;
       flex-wrap: wrap;
-      margin-top: 8px;
+      margin-top: 6px;
       align-items: center;
+      font-size: 13px;
     }
     .status {
       font-size: 14px;
       font-weight: 600;
-      color: #1f2937;
-    }
-    .card {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      box-shadow: var(--shadow);
-      margin-top: 16px;
-      position: relative;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 6px;
-      font-size: 13px;
-    }
-    th, td {
-      padding: 10px 8px;
-      border: 1px solid #e5e7eb;
-      text-align: left;
-      vertical-align: top;
-    }
-    th {
-      background: #f3f4f6;
-      font-weight: 600;
-      position: sticky;
-      top: 0;
+      color: var(--text);
     }
     .small {
       font-size: 12px;
@@ -126,6 +155,43 @@
     }
     .logs-toggle {
       margin-left: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+      table-layout: auto;
+    }
+    th, td {
+      padding: 12px 10px;
+      border: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.2;
+    }
+    th {
+      background: #f0f4f9;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    a {
+      color: #3751ff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .pill {
+      background: #eef6ff;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-right: 6px;
+      display: inline-block;
+      font-weight: 600;
     }
     .logs-panel {
       margin-top: 16px;
@@ -136,34 +202,46 @@
     }
     .log-section {
       margin-bottom: 16px;
-      background: #f3f4f6;
+      background: rgba(242,245,250,.8);
       border-radius: 8px;
-      padding: 12px;
+      padding: 14px;
       overflow: auto;
     }
     pre {
-      background: #1f2937;
-      color: #f9f9fb;
-      padding: 12px;
-      border-radius: 6px;
+      background: #1f2d56;
+      color: #f0f8ff;
+      padding: 14px;
+      border-radius: 8px;
       overflow: auto;
       font-size: 12px;
-      line-height: 1.2;
+      line-height: 1.3;
       max-height: 360px;
     }
-    .pill {
-      background: #eef2ff;
+    .permalink a {
+      display: inline-block;
+      max-width: 260px;
+      overflow-wrap: break-word;
+      word-break: break-all;
+    }
+    .rank-badge {
+      background: #3751ff;
+      color: white;
       padding: 4px 10px;
       border-radius: 999px;
-      font-size: 12px;
-      margin-right: 6px;
+      font-size: 11px;
+      font-weight: 600;
       display: inline-block;
+      min-width: 32px;
+      text-align: center;
+    }
+    .table-wrapper {
+      overflow-x: auto;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Local SERP Scraper MVP v0.5</h1>
+    <h1>Local SERP Scraper MVP v0.6</h1>
 
     <div class="card">
       <div class="controls">
@@ -174,14 +252,11 @@
         <div class="field">
           <label for="locInput">Location</label>
           <input id="locInput" placeholder="e.g. Bend, Oregon, United States" />
-          <ul id="suggestions" style="position:absolute; top:100%; left:0; right:0; z-index:5; list-style:none; background:#fff; border:1px solid #d1d5db; margin:0; padding:0; max-height:180px; overflow:auto;"></ul>
+          <ul id="suggestions" style="position:absolute; top:100%; left:0; right:0; z-index:5; list-style:none; background:#fff; border:1px solid var(--border); margin:0; padding:0; max-height:220px; overflow:auto; border-radius:6px;"></ul>
         </div>
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <label style="visibility:hidden;">run</label>
-          <button id="runBtn">Run Search</button>
-        </div>
+        <button id="runBtn">Run Search</button>
         <div class="logs-toggle">
-          <button id="toggleLogs" style="background:#10b981;">Show Logs</button>
+          <button id="toggleLogs" class="secondary">Show Logs</button>
         </div>
       </div>
       <div class="meta">
@@ -196,7 +271,7 @@
 
     <div id="logs" class="logs-panel card">
       <div class="log-section">
-        <div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
           <div class="pill">Raw SerpAPI Response</div>
           <div class="small">Full JSON returned from SerpAPI</div>
         </div>
@@ -249,11 +324,13 @@
         const data = await r.json();
         suggestions.innerHTML = "";
         data.slice(0, 8).forEach(loc => {
+          const display = (loc.canonical_name || loc.name || "").replace(/,/g, ", ");
           const li = document.createElement("li");
-          li.textContent = loc.canonical_name || loc.name;
-          li.style.padding = "8px";
+          li.textContent = display;
+          li.style.padding = "10px 12px";
+          li.style.cursor = "pointer";
           li.addEventListener("click", () => {
-            locInput.value = li.textContent;
+            locInput.value = display;
             suggestions.innerHTML = "";
           });
           suggestions.appendChild(li);
@@ -298,9 +375,11 @@
     function renderTable(rows) {
       if (!Array.isArray(rows)) return;
       const header = `
+        <div class="table-wrapper">
         <table>
           <thead>
             <tr>
+              <th style="width:60px;">Rank</th>
               <th>Brand</th>
               <th>Permalink</th>
               <th>Title</th>
@@ -314,11 +393,12 @@
             ${rows
               .map((r) => {
                 const brand = escapeHTML(r.brand || "");
-                const permalink = r.permalink || "";
+                const permalink = r.permalink || r.finalUrl || "";
                 return `
               <tr>
+                <td><div class="rank-badge">${r.rank || ""}</div></td>
                 <td>${brand}</td>
-                <td><a href="${permalink}" target="_blank" rel="noopener">${escapeHTML(permalink)}</a></td>
+                <td class="permalink"><a href="${permalink}" target="_blank" rel="noopener">${escapeHTML(permalink)}</a></td>
                 <td>${escapeHTML(r.title)}</td>
                 <td>${escapeHTML(r.metaDescription)}</td>
                 <td>${escapeHTML(r.h1)}</td>
@@ -328,12 +408,13 @@
               })
               .join("")}
           </tbody>
-        </table>`;
+        </table>
+        </div>`;
       output.innerHTML = header;
     }
 
     function escapeHTML(str = "") {
-      return str
+      return String(str)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");

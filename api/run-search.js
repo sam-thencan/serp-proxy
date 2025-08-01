@@ -5,7 +5,7 @@ import {
   chunk,
   cleanText,
   domainFromUrl,
-} from '../lib/index.js';
+} from "../lib/index.js"; // barrel exporting serpapi, scrape, utils
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
@@ -31,13 +31,16 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "SerpAPI fetch failed", detail: e.message });
   }
 
-  // prepare list with brand/permalink metadata
+  // prepare list with brand/permalink metadata and rank
   const toScrape = (serpJSON.organic_results || [])
     .filter((r) => typeof r.link === "string")
     .slice(0, 20)
-    .map((r) => ({
+    .map((r, i) => ({
       link: r.link,
-      brand: r.title ? r.title.trim() : domainFromUrl(r.link),
+      rank: i + 1,
+      brand: (typeof r.source === "string" && r.source.trim()) ||
+             (typeof r.title === "string" && r.title.trim()) ||
+             domainFromUrl(r.link),
     }));
 
   // 2. Scrape SEO for each URL (batching)
@@ -53,25 +56,28 @@ export default async function handler(req, res) {
           ...result,
           brand: orig.brand || domainFromUrl(result.finalUrl),
           permalink: result.finalUrl,
+          rank: orig.rank,
         });
       } else {
         scrapedRaw.push({
           finalUrl: orig.link,
           brand: orig.brand || domainFromUrl(orig.link),
           permalink: orig.link,
+          rank: orig.rank,
           error: p.reason?.message || "scrape failure",
         });
       }
     });
   }
 
-  // 3. Cleaned version (preserve brand/permalink)
+  // 3. Cleaned version (preserve brand/permalink/rank)
   const cleaned = scrapedRaw.map((r) => {
     if (r.error) return { ...r }; // propagate errors
     return {
       finalUrl: r.finalUrl,
       permalink: r.permalink,
       brand: r.brand,
+      rank: r.rank,
       responseTimeMs: r.responseTimeMs,
       titleRaw: r.titleRaw,
       title: cleanText(r.titleRaw, 120),
