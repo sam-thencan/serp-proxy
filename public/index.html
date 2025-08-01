@@ -3,59 +3,44 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Local SERP Scraper MVP v0.6.3</title>
+  <title>Local SERP Scraper MVP</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <div class="container">
-    <h1>Local SERP Scraper MVP v0.6.3</h1>
+    <header class="page-header">
+      <h1>Local SERP Scraper MVP</h1>
+      <button id="refreshBtn" class="refresh-btn" title="Refresh page">↻ Refresh</button>
+    </header>
 
     <div class="card">
       <div class="controls">
         <div class="field">
           <label for="kwInput">Keyword</label>
-          <input id="kwInput" placeholder="e.g. plumber" />
+          <input id="kwInput" placeholder="e.g. plumber" autocomplete="off" />
         </div>
+
         <div class="field">
           <label for="locInput">Location</label>
           <input id="locInput" placeholder="e.g. Bend, Oregon, United States" autocomplete="off" />
-          <ul id="suggestions" style="position:absolute; top:100%; left:0; right:0; z-index:5; list-style:none; background:#fff; border:1px solid var(--border); margin:0; padding:0; max-height:220px; overflow:auto; border-radius:6px;"></ul>
+          <ul id="suggestions"></ul>
         </div>
+
         <button id="runBtn">Run Search</button>
-        <div class="logs-toggle">
-          <button id="toggleLogs" class="secondary">Show Logs</button>
-        </div>
+        <button id="saveLoadBtn" class="secondary wide">Save Search</button>
       </div>
+
       <div class="meta">
         <div class="status" id="status">Idle</div>
         <div class="small">Keyword first, then location. Select and hit Run.</div>
       </div>
     </div>
 
-    <div id="output" class="card" aria-live="polite">
-      <!-- results table appended here -->
-    </div>
+    <div id="output" class="card" aria-live="polite"></div>
 
+    <!-- logs still hidden, inspect via dev-tools if needed -->
     <div id="logs" class="logs-panel card">
-      <div class="log-section">
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-          <div class="pill">Raw SerpAPI Response</div>
-          <div class="small">Full JSON returned from SerpAPI</div>
-        </div>
-        <pre id="serpRaw"></pre>
-      </div>
-
-      <div class="log-section">
-        <div class="pill">Scraped (Raw)</div>
-        <div class="small">Extraction before cleaning (titleRaw, metaDescriptionRaw, h1Raw)</div>
-        <pre id="scrapedRaw"></pre>
-      </div>
-
-      <div class="log-section">
-        <div class="pill">Cleaned</div>
-        <div class="small">After neutralization / truncation</div>
-        <pre id="cleanedRaw"></pre>
-      </div>
+      <pre id="serpRaw"></pre>
     </div>
   </div>
 
