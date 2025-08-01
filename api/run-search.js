@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.SERPAPI_KEY;
   if (!apiKey) return res.status(500).json({ error: "SERPAPI_KEY not set" });
 
-  // 1. SERP API
+  // 1. Query SerpAPI
   const serpURL = `https://serpapi.com/search.json` +
     `?engine=google&q=${encodeURIComponent(q)}` +
     `&location=${encodeURIComponent(location)}` +
@@ -32,20 +32,18 @@ export default async function handler(req, res) {
     .slice(0, 20)
     .map(r => r.link);
 
-  // 2. Scrape SEO for each URL (batching to avoid too many simultaneous)
+  // 2. Scrape SEO for each URL (batching)
   const batches = chunk(links, 5);
   const scrapedRaw = [];
   for (const batch of batches) {
     const settled = await Promise.allSettled(batch.map(scrapeSEO));
     settled.forEach(p => {
       if (p.status === "fulfilled") scrapedRaw.push(p.value);
-      else {
-        scrapedRaw.push({ error: p.reason?.message || "scrape failure" });
-      }
+      else scrapedRaw.push({ error: p.reason?.message || "scrape failure" });
     });
   }
 
-  // 3. Cleaned version
+  // 3. Clean results
   const cleaned = scrapedRaw.map(r => {
     if (r.error) return { ...r }; // propagate errors
     return {
@@ -56,12 +54,11 @@ export default async function handler(req, res) {
       metaDescriptionRaw: r.metaDescriptionRaw,
       metaDescription: cleanText(r.metaDescriptionRaw, 160),
       h1Raw: r.h1Raw,
-      h1: cleanText(r.h1Raw, 100),
+      h1: cleanText(r.h1Raw, 200),
       wordCount: r.wordCount,
     };
   });
 
-  // Return both logs and cleaned results for table
   res.json({
     query: q,
     location,
@@ -70,7 +67,7 @@ export default async function handler(req, res) {
       scraped_raw: scrapedRaw,
       cleaned,
     },
-    results: cleaned, // for backwards compatibility / easy rendering
+    results: cleaned,
   });
 }
 
@@ -102,14 +99,25 @@ async function scrapeSEO(url) {
   const responseTimeMs = Date.now() - start;
   const html = await r.text();
 
-  const titleRaw = match1(/<title[^>]*>([^<]*)<\/title>/i, html);
+  // Title
+  const titleRaw = match1(/<title[^>]*>([\s\S]*?)<\/title>/i, html);
+
+  // Meta description
   const metaDescriptionRaw = match1(
-    /<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i,
+    /<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i,
     html
   );
-  const h1Raw = match1(/<h1[^>]*>([^<]*)<\/h1>/i, html);
 
-  // word count from visible text
+  // H1 (capture entire content, strip nested tags)
+  const h1Block = match1(/<h1[^>]*>([\s\S]*?)<\/h1>/i, html);
+  let h1Raw = null;
+  if (h1Block) {
+    h1Raw = decodeEntities(
+      h1Block.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+    );
+  }
+
+  // Word count
   const textOnly = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -133,12 +141,26 @@ const match1 = (re, str) => {
   return m && m[1] ? m[1].trim() : null;
 };
 
+// Decode common HTML entities
+function decodeEntities(str = "") {
+  return str.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === "#") {
+      const code = entity[1].toLowerCase() === "x"
+        ? parseInt(entity.slice(2), 16)
+        : parseInt(entity.slice(1), 10);
+      return String.fromCharCode(code);
+    }
+    const map = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+    return map[entity.toLowerCase()] || match;
+  });
+}
+
 function cleanText(text = "", maxLength = null) {
   if (!text) return "";
-  let t = text.replace(/\|/g, "&#124;"); // neutralize pipes
-  t = t.replace(/[\r\n]+/g, " ").trim(); // collapse line breaks
+  let t = text.replace(/[\r\n]+/g, " ").trim(); // just collapse whitespace
   if (maxLength && t.length > maxLength) {
     return t.slice(0, maxLength - 1).trim() + "…";
   }
   return t;
 }
+
