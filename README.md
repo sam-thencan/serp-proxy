@@ -178,13 +178,3 @@ curl -X POST http://localhost:3000/api/run-search \
 * Persistent backend cache (e.g., Redis, Vercel KV) for repeated queries.
 * Export (CSV/JSON) of results.
 * UI configuration of blacklist/whitelist.
-* Authentication for sharing saved searches.
-* More granular retry/backoff for fetch failures.
-* Multi-page SERP support with rate-limited pagination.
-
-## Commit Suggestion
-
-```sh
-git add public/index.html README.md
-git commit -m "chore: rename to Local SEO Competitor Agent and add comprehensive README"
-```
