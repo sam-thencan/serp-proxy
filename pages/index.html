@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Location Picker</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    #locationInput {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #suggestions {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #ccc;
+      border-top: none;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #suggestions li:hover {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <h2>Pick a Location</h2>
+  <input id="locationInput" type="text" placeholder="Type a city or region..." />
+  <ul id="suggestions"></ul>
+
+  <script>
+    const input = document.getElementById("locationInput");
+    const suggestions = document.getElementById("suggestions");
+    let timeoutId = null;
+
+    input.addEventListener("input", () => {
+      const query = input.value.trim();
+      clearTimeout(timeoutId);
+
+      if (query.length < 2) {
+        suggestions.innerHTML = "";
+        return;
+      }
+
+      timeoutId = setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `/api/proxy-locations?q=${encodeURIComponent(query)}`
+          );
+          if (!res.ok) throw new Error("Failed to fetch");
+
+          const data = await res.json();
+          renderSuggestions(data);
+        } catch (e) {
+          suggestions.innerHTML = `<li style="color:red;">Error: ${e.message}</li>`;
+        }
+      }, 300);
+    });
+
+    function renderSuggestions(locations) {
+      suggestions.innerHTML = "";
+      if (!Array.isArray(locations) || locations.length === 0) {
+        suggestions.innerHTML = `<li>No results found</li>`;
+        return;
+      }
+
+      locations.forEach(loc => {
+        const li = document.createElement("li");
+        li.textContent = loc.canonical_name || loc.name;
+        li.onclick = () => {
+          input.value = loc.canonical_name || loc.name;
+          suggestions.innerHTML = "";
+        };
+        suggestions.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
