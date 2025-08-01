@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Location Picker</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
       padding: 20px;
       max-width: 600px;
       margin: auto;
@@ -34,41 +34,50 @@
     #suggestions li:hover {
       background: #f0f0f0;
     }
+    .selected {
+      margin-top: 12px;
+      padding: 8px;
+      background: #eef;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <h2>Pick a Location</h2>
   <input id="locationInput" type="text" placeholder="Type a city or region..." />
   <ul id="suggestions"></ul>
+  <div id="chosen" class="selected" style="display:none;">
+    <strong>Selected:</strong> <span id="chosenText"></span>
+  </div>
 
   <script>
     const input = document.getElementById("locationInput");
     const suggestions = document.getElementById("suggestions");
+    const chosen = document.getElementById("chosen");
+    const chosenText = document.getElementById("chosenText");
     let timeoutId = null;
 
     input.addEventListener("input", () => {
       const query = input.value.trim();
       clearTimeout(timeoutId);
-
+      chosen.style.display = "none";
       if (query.length < 2) {
         suggestions.innerHTML = "";
         return;
       }
-
-      timeoutId = setTimeout(async () => {
-        try {
-          const res = await fetch(
-            `/api/proxy-locations?q=${encodeURIComponent(query)}`
-          );
-          if (!res.ok) throw new Error("Failed to fetch");
-
-          const data = await res.json();
-          renderSuggestions(data);
-        } catch (e) {
-          suggestions.innerHTML = `<li style="color:red;">Error: ${e.message}</li>`;
-        }
-      }, 300);
+      timeoutId = setTimeout(fetchLocations, 300, query);
     });
+
+    async function fetchLocations(query) {
+      try {
+        const res = await fetch(`/api/proxy-locations?q=${encodeURIComponent(query)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        renderSuggestions(data);
+      } catch (e) {
+        suggestions.innerHTML = `<li style="color:red;">Error: ${e.message}</li>`;
+      }
+    }
 
     function renderSuggestions(locations) {
       suggestions.innerHTML = "";
@@ -76,14 +85,16 @@
         suggestions.innerHTML = `<li>No results found</li>`;
         return;
       }
-
       locations.forEach(loc => {
+        const display = loc.canonical_name || loc.name;
         const li = document.createElement("li");
-        li.textContent = loc.canonical_name || loc.name;
-        li.onclick = () => {
-          input.value = loc.canonical_name || loc.name;
+        li.textContent = display;
+        li.addEventListener("click", () => {
+          input.value = display;
           suggestions.innerHTML = "";
-        };
+          chosenText.textContent = display;
+          chosen.style.display = "block";
+        });
         suggestions.appendChild(li);
       });
     }
