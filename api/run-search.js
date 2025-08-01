@@ -5,6 +5,7 @@ import {
   chunk,
   cleanText,
   domainFromUrl,
+  hostIsBlacklisted,
 } from "../lib/index.js"; // barrel exporting serpapi, scrape, utils
 
 export default async function handler(req, res) {
@@ -31,17 +32,31 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "SerpAPI fetch failed", detail: e.message });
   }
 
-  // prepare list with brand/permalink metadata and rank
-  const toScrape = (serpJSON.organic_results || [])
-    .filter((r) => typeof r.link === "string")
-    .slice(0, 20)
-    .map((r, i) => ({
-      link: r.link,
-      rank: i + 1,
-      brand: (typeof r.source === "string" && r.source.trim()) ||
-             (typeof r.title === "string" && r.title.trim()) ||
-             domainFromUrl(r.link),
-    }));
+  // prepare list with brand/permalink metadata and SERP rank
+  const rawResults = (serpJSON.organic_results || []).slice(0, 20);
+  const toScrapeWithMeta = await Promise.all(
+    rawResults.map(async (r, idx) => {
+      const link = typeof r.link === "string" ? r.link : null;
+      const brand = r.title ? r.title.trim() : domainFromUrl(link || "");
+      const rank = idx + 1;
+      let domain = "";
+      try {
+        domain = new URL(link).hostname.replace(/^www\./i, "");
+      } catch {}
+      const blacklisted = await hostIsBlacklisted(domain);
+      return {
+        link,
+        brand,
+        rank,
+        blacklisted,
+      };
+    })
+  );
+
+  // filter out blacklisted entries (listicles, directories, socials)
+  const toScrape = toScrapeWithMeta
+    .filter((o) => o.link && !o.blacklisted)
+    .map((o) => ({ link: o.link, brand: o.brand, rank: o.rank }));
 
   // 2. Scrape SEO for each URL (batching)
   const batches = chunk(toScrape, 5);
