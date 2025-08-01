@@ -1,7 +1,11 @@
 // api/run-search.js
-import { getSerpResults } from "../../lib/serpapi.js";
-import { scrapeSEO } from "../../lib/scrape.js";
-import { chunk, cleanText, domainFromUrl } from "../../lib/utils.js";
+import {
+  getSerpResults,
+  scrapeSEO,
+  chunk,
+  cleanText,
+  domainFromUrl,
+} from '../lib/index.js';
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
