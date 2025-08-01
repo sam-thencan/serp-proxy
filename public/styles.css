@@ -1,71 +1,18 @@
+/* Always dark mode — no prefers-color-scheme needed */
 :root {
   --radius: 12px;
-  --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.08);
-  --border: #e6e8ec;
-  --bg: #f2f5fa;
-  --card-bg: #ffffff;
-  --muted: #6c7280;
-  --text: #1f2d3a;
   --radius-sm: 6px;
+  --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6);
+  --border: #2a3355;
+  --bg: #0f172a;
+  --card-bg: #1f2238;
+  --muted: #8a94b0;
+  --text: #e4e9ff;
+  --subtle-bg: rgba(255, 255, 255, 0.02);
+  --input-bg: #1f274d;
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --focus-ring: rgba(59, 130, 246, 0.5);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f172a;
-    --card-bg: #1f2238;
-    --border: #2a3355;
-    --text: #e4e9ff;
-    --muted: #8a94b0;
-  }
-
-  body {
-    color: var(--text);
-    background: var(--bg);
-  }
-
-  table {
-    background: transparent;
-  }
-
-  th {
-    background: #2d3748;
-    color: #e2e8f0;
-    border-bottom: 2px solid #3b4a67;
-  }
-
-  td, th {
-    border-color: var(--border);
-  }
-
-  pre {
-    background: #0e1a3b;
-  }
-
-  input {
-    background: #1f274d;
-    border: 1px solid #2f3563;
-    color: var(--text);
-  }
-
-  #suggestions {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-  }
-
-  #suggestions li {
-    color: var(--text);
-  }
-
-  #suggestions li:hover {
-    background: #2d3748;
-  }
-
-  button {
-    filter: none;
-  }
 }
 
 * {
@@ -78,6 +25,7 @@ body {
   padding: 0;
   min-height: 100vh;
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 .container {
@@ -90,6 +38,7 @@ h1 {
   font-size: 32px;
   margin-bottom: 8px;
   font-weight: 700;
+  line-height: 1.1;
 }
 
 .card {
@@ -131,16 +80,53 @@ input {
   font-size: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--input-bg);
   outline: none;
   transition: var(--transition);
   width: 100%;
   font-weight: 500;
+  color: var(--text);
+}
+
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 input:focus {
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 4px var(--focus-ring);
   border-color: #3b82f6;
+}
+
+#suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--card-bg) !important;
+  color: var(--text);
+}
+
+#suggestions li {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+#suggestions li:hover,
+#suggestions li.active {
+  background: #1f2d56;
 }
 
 button {
@@ -156,6 +142,7 @@ button {
   gap: 6px;
   transition: var(--transition);
   font-size: 14px;
+  white-space: nowrap;
 }
 
 button.secondary {
@@ -191,6 +178,7 @@ button:hover {
 
 .table-wrapper {
   overflow-x: auto;
+  margin-top: 8px;
 }
 
 table {
@@ -199,9 +187,11 @@ table {
   margin-top: 12px;
   font-size: 13px;
   table-layout: auto;
+  background: transparent;
 }
 
-th, td {
+th,
+td {
   padding: 12px 10px;
   border: 1px solid var(--border);
   text-align: left;
@@ -210,14 +200,14 @@ th, td {
 }
 
 th {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: #1f274d;
+  color: #e2e8f0;
   font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  letter-spacing: 0.75px;
   text-transform: uppercase;
   padding: 14px 12px;
-  border-bottom: 2px solid #d1d5db;
+  border-bottom: 2px solid #3b4a67;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -229,8 +219,9 @@ tbody tr:hover {
 }
 
 a {
-  color: #3751ff;
+  color: #7aa7ff;
   text-decoration: none;
+  word-break: break-word;
 }
 
 a:hover {
@@ -238,13 +229,14 @@ a:hover {
 }
 
 .pill {
-  background: #eef6ff;
+  background: rgba(62, 100, 255, 0.1);
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12px;
   margin-right: 6px;
   display: inline-block;
   font-weight: 600;
+  color: #c7d3ff;
 }
 
 .logs-panel {
@@ -258,14 +250,15 @@ a:hover {
 
 .log-section {
   margin-bottom: 16px;
-  background: rgba(242,245,250,.8);
+  background: rgba(31, 45, 90, 0.85);
   border-radius: 8px;
   padding: 14px;
   overflow: auto;
+  border: 1px solid var(--border);
 }
 
 pre {
-  background: #1f2d56;
+  background: #0e1a3b;
   color: #f0f8ff;
   padding: 14px;
   border-radius: 8px;
@@ -279,6 +272,8 @@ pre {
   display: inline-block;
   max-width: 260px;
   overflow-wrap: break-word;
+  word-break: break-all;
+  color: #7aa7ff;
 }
 
 .rank-badge {
@@ -291,4 +286,15 @@ pre {
   display: inline-block;
   min-width: 32px;
   text-align: center;
+}
+
+@media (max-width: 1200px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  button {
+    width: 100%;
+    justify-content: center;
+  }
 }
