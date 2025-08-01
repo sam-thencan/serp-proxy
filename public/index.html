@@ -1,94 +1,373 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/>
-<title>Local SERP Scraper MVP</title>
-<style>
- body{font-family:sans-serif;max-width:700px;margin:30px auto;padding:0 10px}
- input,button{padding:8px;font-size:16px;border:1px solid #ccc;border-radius:4px}
- button{cursor:pointer;margin-left:6px}
- #suggestions{list-style:none;margin:0;padding:0;border:1px solid #ccc;border-top:none;max-height:200px;overflow-y:auto}
- #suggestions li{padding:6px;cursor:pointer}
- #suggestions li:hover{background:#f0f0f0}
- table{border-collapse:collapse;width:100%;margin-top:20px}
- th,td{border:1px solid #ccc;padding:6px;font-size:14px}
- th{background:#fafafa;text-align:left}
-</style></head>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Local SERP Scraper MVP</title>
+  <style>
+    :root {
+      --radius: 10px;
+      --shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.08);
+      --border: #e5e7eb;
+      --bg: #f9f9fb;
+      --card-bg: #fff;
+      --muted: #6b7280;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+    }
+    body {
+      background: var(--bg);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      align-items: flex-start;
+    }
+    .field {
+      flex: 1 1 200px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #374151;
+    }
+    input {
+      padding: 12px 14px;
+      font-size: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      outline: none;
+      transition: var(--transition);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input:focus {
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+      border-color: #3b82f6;
+    }
+    button {
+      padding: 12px 18px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+    button:hover {
+      filter: brightness(1.05);
+    }
+    .meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      align-items: center;
+    }
+    .status {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      margin-top: 16px;
+      position: relative;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 8px;
+      border: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .logs-toggle {
+      margin-left: auto;
+    }
+    .logs-panel {
+      margin-top: 16px;
+      display: none;
+    }
+    .logs-panel.active {
+      display: block;
+    }
+    .log-section {
+      margin-bottom: 16px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+    }
+    pre {
+      background: #1f2937;
+      color: #f9f9fb;
+      padding: 12px;
+      border-radius: 6px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.2;
+      max-height: 360px;
+    }
+    .split {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      background: #eef2ff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-right: 6px;
+      display: inline-block;
+    }
+    .result-row summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .code-block {
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 8px;
+      margin: 4px 0;
+      font-size: 12px;
+      overflow: auto;
+    }
+  </style>
+</head>
 <body>
-  <h2>Pick Location & Keyword</h2>
-  <input id="locInput" placeholder="Type location…">
-  <ul id="suggestions"></ul><br>
-  <input id="kwInput" placeholder="Keyword (e.g. plumber)" style="width:65%">
-  <button id="runBtn">Run</button>
-  <div id="status" style="margin-top:12px;font-weight:600;"></div>
-  <div id="output"></div>
+  <div class="container">
+    <h1>Local SERP Scraper MVP</h1>
 
-<script>
-const locInput = document.getElementById('locInput');
-const kwInput  = document.getElementById('kwInput');
-const sugg     = document.getElementById('suggestions');
-const runBtn   = document.getElementById('runBtn');
-const statusEl = document.getElementById('status');
-const out      = document.getElementById('output');
+    <div class="card">
+      <div class="controls">
+        <div class="field">
+          <label for="kwInput">Keyword</label>
+          <input id="kwInput" placeholder="e.g. plumber" />
+        </div>
+        <div class="field">
+          <label for="locInput">Location</label>
+          <input id="locInput" placeholder="e.g. Bend, Oregon, United States" />
+          <ul id="suggestions" style="position:absolute; top:100%; left:0; right:0; z-index:5; list-style:none; background:#fff; border:1px solid #d1d5db; margin:0; padding:0; max-height:180px; overflow:auto;"></ul>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label style="visibility:hidden;">run</label>
+          <button id="runBtn">Run Search</button>
+        </div>
+        <div class="logs-toggle">
+          <button id="toggleLogs" style="background:#10b981;">Show Logs</button>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="status" id="status">Idle</div>
+        <div class="small">Keyword first, then location. Select and hit Run.</div>
+      </div>
+    </div>
 
-let locTimer;
-locInput.addEventListener('input', () => {
-  const q = locInput.value.trim();
-  clearTimeout(locTimer);
-  if (q.length < 2){ sugg.innerHTML=''; return; }
-  locTimer = setTimeout(fetchLocs, 300, q);
-});
+    <div id="output" class="card" aria-live="polite">
+      <!-- results table appended here -->
+    </div>
 
-async function fetchLocs(q){
-  const r = await fetch(`/api/proxy-locations?q=${encodeURIComponent(q)}`);
-  if(!r.ok){sugg.innerHTML='<li>Error</li>';return;}
-  const data = await r.json();
-  sugg.innerHTML='';
-  data.slice(0,10).forEach(loc=>{
-    const li=document.createElement('li');
-    li.textContent=loc.canonical_name||loc.name;
-    li.onclick=()=>{locInput.value=li.textContent;sugg.innerHTML='';};
-    sugg.appendChild(li);
-  });
-}
+    <div id="logs" class="logs-panel card">
+      <div class="log-section">
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <div>
+            <div class="pill">Raw SerpAPI Response</div>
+            <div class="small">Full JSON returned from SerpAPI</div>
+          </div>
+        </div>
+        <pre id="serpRaw"></pre>
+      </div>
 
-runBtn.onclick = async ()=>{
-  const location = locInput.value.trim();
-  const keyword  = kwInput.value.trim();
-  if(!location||!keyword){alert('Need location & keyword');return;}
-  statusEl.textContent='Running…';
-  out.innerHTML='';
-  const res = await fetch('/api/run-search',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ q: keyword, location })});
-  if(!res.ok){statusEl.textContent=`Error ${res.status}`;return;}
-  const {results}=await res.json();
-  statusEl.textContent=`Got ${results.length} results`;
-  render(results);
-};
+      <div class="log-section">
+        <div class="pill">Scraped (Raw)</div>
+        <div class="small">Extraction before cleaning (titleRaw, metaDescriptionRaw, h1Raw)</div>
+        <pre id="scrapedRaw"></pre>
+      </div>
 
-function render(rows){
-  const html = `
-  <table><thead><tr>
-    <th>Domain</th><th>Title</th><th>Meta</th><th>H1</th>
-    <th>Words</th><th>Resp (ms)</th></tr></thead><tbody>
-    ${rows.map(r=>{
-       const dom = (()=>{
-         try{return new URL(r.finalUrl).hostname.replace(/^www\./,'');}catch{return'';}
-       })();
-       return `<tr>
-         <td>${dom}</td>
-         <td>${safe(r.title)}</td>
-         <td>${safe(r.metaDescription)}</td>
-         <td>${safe(r.h1)}</td>
-         <td>${r.wordCount||''}</td>
-         <td>${r.responseTimeMs||''}</td>
-       </tr>`;
-     }).join('')}
-  </tbody></table>`;
-  out.innerHTML=html;
-}
+      <div class="log-section">
+        <div class="pill">Cleaned</div>
+        <div class="small">After neutralization / truncation</div>
+        <pre id="cleanedRaw"></pre>
+      </div>
+    </div>
+  </div>
 
-const safe = t => (t||'').replace(/[<>]/g,'');
-</script>
+  <script>
+    const locInput = document.getElementById("locInput");
+    const kwInput = document.getElementById("kwInput");
+    const suggestions = document.getElementById("suggestions");
+    const runBtn = document.getElementById("runBtn");
+    const statusEl = document.getElementById("status");
+    const output = document.getElementById("output");
+    const toggleLogs = document.getElementById("toggleLogs");
+    const logsPanel = document.getElementById("logs");
+    const serpRawEl = document.getElementById("serpRaw");
+    const scrapedRawEl = document.getElementById("scrapedRaw");
+    const cleanedRawEl = document.getElementById("cleanedRaw");
+
+    let locTimer;
+
+    locInput.addEventListener("input", () => {
+      const q = locInput.value.trim();
+      clearTimeout(locTimer);
+      if (q.length < 2) {
+        suggestions.innerHTML = "";
+        return;
+      }
+      locTimer = setTimeout(fetchLocs, 300, q);
+    });
+
+    async function fetchLocs(q) {
+      try {
+        const r = await fetch(`/api/proxy-locations?q=${encodeURIComponent(q)}`);
+        if (!r.ok) throw new Error("location lookup failed");
+        const data = await r.json();
+        suggestions.innerHTML = "";
+        data.slice(0, 8).forEach(loc => {
+          const li = document.createElement("li");
+          li.textContent = loc.canonical_name || loc.name;
+          li.style.padding = "8px";
+          li.addEventListener("click", () => {
+            locInput.value = li.textContent;
+            suggestions.innerHTML = "";
+          });
+          suggestions.appendChild(li);
+        });
+      } catch (e) {
+        suggestions.innerHTML = `<li style="color:red;padding:8px;">${e.message}</li>`;
+      }
+    }
+
+    runBtn.addEventListener("click", async () => {
+      const keyword = kwInput.value.trim();
+      const location = locInput.value.trim();
+      if (!keyword || !location) {
+        alert("Need keyword and location");
+        return;
+      }
+      statusEl.textContent = "Running search...";
+      output.innerHTML = "";
+      // fetch and process
+      try {
+        const resp = await fetch("/api/run-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q: keyword, location }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          statusEl.textContent = `Error: ${err.error || resp.status}`;
+          return;
+        }
+        const data = await resp.json();
+        statusEl.textContent = `Got ${data.results?.length || 0} results`;
+        renderTable(data.results || []);
+        // populate logs
+        serpRawEl.textContent = JSON.stringify(data.logs?.serp_raw, null, 2);
+        scrapedRawEl.textContent = JSON.stringify(data.logs?.scraped_raw, null, 2);
+        cleanedRawEl.textContent = JSON.stringify(data.logs?.cleaned, null, 2);
+      } catch (e) {
+        statusEl.textContent = "Fetch error";
+        console.warn(e);
+      }
+    });
+
+    function renderTable(rows) {
+      if (!Array.isArray(rows)) return;
+      const header = `
+        <table>
+          <thead>
+            <tr>
+              <th>Domain</th>
+              <th>Title</th>
+              <th>Meta</th>
+              <th>H1</th>
+              <th>Words</th>
+              <th>Resp (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map((r) => {
+                const dom = (() => {
+                  try {
+                    return new URL(r.finalUrl).hostname.replace(/^www\./, "");
+                  } catch {
+                    return "";
+                  }
+                })();
+                return `
+              <tr>
+                <td>${dom}</td>
+                <td>${escapeHTML(r.title)}</td>
+                <td>${escapeHTML(r.metaDescription)}</td>
+                <td>${escapeHTML(r.h1)}</td>
+                <td>${r.wordCount || ""}</td>
+                <td>${r.responseTimeMs || ""}</td>
+              </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>`;
+      output.innerHTML = header;
+    }
+
+    function escapeHTML(str = "") {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    toggleLogs.addEventListener("click", () => {
+      const active = logsPanel.classList.toggle("active");
+      toggleLogs.textContent = active ? "Hide Logs" : "Show Logs";
+    });
+  </script>
 </body>
 </html>
