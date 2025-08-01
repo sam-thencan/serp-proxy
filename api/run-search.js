@@ -164,3 +164,6 @@ function cleanText(text = "", maxLength = null) {
   return t;
 }
 
+export { scrapeSEO };
+
+
