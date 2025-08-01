@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Local SERP Scraper MVP</title>
+  <title>Local SERP Scraper MVP v0.3</title>
   <style>
     :root {
       --radius: 10px;
@@ -151,11 +151,6 @@
       line-height: 1.2;
       max-height: 360px;
     }
-    .split {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
     .pill {
       background: #eef2ff;
       padding: 4px 10px;
@@ -163,19 +158,6 @@
       font-size: 12px;
       margin-right: 6px;
       display: inline-block;
-    }
-    .result-row summary {
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .code-block {
-      background: #fff;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      padding: 8px;
-      margin: 4px 0;
-      font-size: 12px;
-      overflow: auto;
     }
   </style>
 </head>
@@ -214,11 +196,9 @@
 
     <div id="logs" class="logs-panel card">
       <div class="log-section">
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-          <div>
-            <div class="pill">Raw SerpAPI Response</div>
-            <div class="small">Full JSON returned from SerpAPI</div>
-          </div>
+        <div>
+          <div class="pill">Raw SerpAPI Response</div>
+          <div class="small">Full JSON returned from SerpAPI</div>
         </div>
         <pre id="serpRaw"></pre>
       </div>
@@ -292,7 +272,6 @@
       }
       statusEl.textContent = "Running search...";
       output.innerHTML = "";
-      // fetch and process
       try {
         const resp = await fetch("/api/run-search", {
           method: "POST",
@@ -307,7 +286,6 @@
         const data = await resp.json();
         statusEl.textContent = `Got ${data.results?.length || 0} results`;
         renderTable(data.results || []);
-        // populate logs
         serpRawEl.textContent = JSON.stringify(data.logs?.serp_raw, null, 2);
         scrapedRawEl.textContent = JSON.stringify(data.logs?.scraped_raw, null, 2);
         cleanedRawEl.textContent = JSON.stringify(data.logs?.cleaned, null, 2);
@@ -323,7 +301,8 @@
         <table>
           <thead>
             <tr>
-              <th>Domain</th>
+              <th>Brand</th>
+              <th>Permalink</th>
               <th>Title</th>
               <th>Meta</th>
               <th>H1</th>
@@ -334,16 +313,12 @@
           <tbody>
             ${rows
               .map((r) => {
-                const dom = (() => {
-                  try {
-                    return new URL(r.finalUrl).hostname.replace(/^www\./, "");
-                  } catch {
-                    return "";
-                  }
-                })();
+                const brand = escapeHTML(r.brand || "");
+                const permalink = r.permalink || "";
                 return `
               <tr>
-                <td>${dom}</td>
+                <td>${brand}</td>
+                <td><a href="${permalink}" target="_blank" rel="noopener">${escapeHTML(permalink)}</a></td>
                 <td>${escapeHTML(r.title)}</td>
                 <td>${escapeHTML(r.metaDescription)}</td>
                 <td>${escapeHTML(r.h1)}</td>

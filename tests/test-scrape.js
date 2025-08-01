@@ -2,7 +2,7 @@ import { scrapeSEO } from "../api/run-search.js"; // adjust path if needed
 
 (async () => {
   const urls = [
-    "https://bendoregonplumber.com/",
+    "https://plumbingbend.com/",
     "https://seversonplumbers.com/",
   ];
 

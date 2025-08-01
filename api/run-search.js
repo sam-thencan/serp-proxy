@@ -15,8 +15,9 @@ export default async function handler(req, res) {
   const apiKey = process.env.SERPAPI_KEY;
   if (!apiKey) return res.status(500).json({ error: "SERPAPI_KEY not set" });
 
-  // 1. Query SerpAPI
-  const serpURL = `https://serpapi.com/search.json` +
+  // 1. SERP API
+  const serpURL =
+    `https://serpapi.com/search.json` +
     `?engine=google&q=${encodeURIComponent(q)}` +
     `&location=${encodeURIComponent(location)}` +
     `&num=20&hl=en&gl=us&api_key=${apiKey}`;
@@ -43,11 +44,25 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3. Clean results
-  const cleaned = scrapedRaw.map(r => {
-    if (r.error) return { ...r }; // propagate errors
+  // 3. Cleaned + brand/permalink
+  const cleaned = scrapedRaw.map((r, i) => {
+    if (r.error) return { ...r };
+
+    const serpResult = (serpJSON.organic_results || [])[i] || {};
+
+    // Brand: prefer source, fallback to domain
+    let brand = serpResult.source;
+    if (!brand && r.finalUrl) {
+      try {
+        brand = new URL(r.finalUrl).hostname.replace(/^www\./, "");
+      } catch {
+        brand = "";
+      }
+    }
+
     return {
-      finalUrl: r.finalUrl,
+      brand,
+      permalink: r.finalUrl,
       responseTimeMs: r.responseTimeMs,
       titleRaw: r.titleRaw,
       title: cleanText(r.titleRaw, 120),
@@ -71,7 +86,7 @@ export default async function handler(req, res) {
   });
 }
 
-/* Helpers */
+/* ---------- helpers ---------- */
 
 async function readBody(req) {
   const buffers = [];
@@ -95,29 +110,35 @@ function chunk(arr, size) {
 
 async function scrapeSEO(url) {
   const start = Date.now();
-  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  let r;
+  try {
+    r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  } catch (e) {
+    return { finalUrl: url, error: `fetch failed: ${e.message}` };
+  }
   const responseTimeMs = Date.now() - start;
   const html = await r.text();
 
-  // Title
+  // Title (capture everything inside title)
   const titleRaw = match1(/<title[^>]*>([\s\S]*?)<\/title>/i, html);
 
-  // Meta description
-  const metaDescriptionRaw = match1(
-    /<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i,
-    html
-  );
+  // Meta description (two common orderings)
+  let metaDescriptionRaw = null;
+  const desc1 = /<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["'][^>]*>/i.exec(html);
+  const desc2 = /<meta[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["'][^>]*>/i.exec(html);
+  if (desc1) metaDescriptionRaw = desc1[1].trim();
+  else if (desc2) metaDescriptionRaw = desc2[1].trim();
 
-  // H1 (capture entire content, strip nested tags)
-  const h1Block = match1(/<h1[^>]*>([\s\S]*?)<\/h1>/i, html);
+  // H1: capture entire inner HTML, strip nested tags
   let h1Raw = null;
+  const h1Block = match1(/<h1[^>]*>([\s\S]*?)<\/h1>/i, html);
   if (h1Block) {
     h1Raw = decodeEntities(
       h1Block.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
     );
   }
 
-  // Word count
+  // Word count from visible text
   const textOnly = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -127,10 +148,10 @@ async function scrapeSEO(url) {
   const wordCount = (textOnly.match(/\b\w+\b/g) || []).length;
 
   return {
-    finalUrl: r.url,
+    finalUrl: r?.url || url,
     responseTimeMs,
-    titleRaw,
-    metaDescriptionRaw,
+    titleRaw: titleRaw ? decodeEntities(titleRaw) : null,
+    metaDescriptionRaw: metaDescriptionRaw ? decodeEntities(metaDescriptionRaw) : null,
     h1Raw,
     wordCount,
   };
@@ -141,28 +162,30 @@ const match1 = (re, str) => {
   return m && m[1] ? m[1].trim() : null;
 };
 
-// Decode common HTML entities
+// Basic entity decoder for common cases
 function decodeEntities(str = "") {
   return str.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
     if (entity[0] === "#") {
-      const code = entity[1].toLowerCase() === "x"
-        ? parseInt(entity.slice(2), 16)
-        : parseInt(entity.slice(1), 10);
+      const code =
+        entity[1].toLowerCase() === "x"
+          ? parseInt(entity.slice(2), 16)
+          : parseInt(entity.slice(1), 10);
       return String.fromCharCode(code);
     }
-    const map = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
-    return map[entity.toLowerCase()] || match;
+    const table = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+    return table[entity.toLowerCase()] || match;
   });
 }
 
 function cleanText(text = "", maxLength = null) {
   if (!text) return "";
-  let t = text.replace(/[\r\n]+/g, " ").trim(); // just collapse whitespace
+  let t = text.replace(/[\r\n]+/g, " ").trim(); // collapse whitespace
   if (maxLength && t.length > maxLength) {
     return t.slice(0, maxLength - 1).trim() + "…";
   }
   return t;
 }
+
 
 export { scrapeSEO };
 
