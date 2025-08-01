@@ -45,6 +45,7 @@ tripadvisor.com
 trustpilot.com
 twitter.com
 x.com
+wikipedia.org
 yalwa.info
 yellowbook.com
 yellowpages.com

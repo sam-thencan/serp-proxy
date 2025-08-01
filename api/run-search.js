@@ -37,7 +37,7 @@ export default async function handler(req, res) {
   const toScrapeWithMeta = await Promise.all(
     rawResults.map(async (r, idx) => {
       const link = typeof r.link === "string" ? r.link : null;
-      const brand = r.title ? r.title.trim() : domainFromUrl(link || "");
+      const brand = r.source ? r.source : domainFromUrl(link || "");
       const rank = idx + 1;
       let domain = "";
       try {
