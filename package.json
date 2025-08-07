@@ -9,13 +9,22 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/test-scrape.js",
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sam-thencan/serp-proxy.git"
   },
-  "keywords": [],
+  "keywords": ["seo", "serp", "competitor-analysis", "vercel"],
   "author": "",
   "license": "ISC",
   "bugs": {
