@@ -96,9 +96,9 @@ export default async function handler(req, res) {
   console.log(`🎯 ${toScrape.length} URLs to scrape after filtering (removed ${rawResults.length - toScrape.length} blacklisted)`);
 
   // 2. Scrape SEO for each URL (batching)
-  const batches = chunk(toScrape, 5);
+  const batches = chunk(toScrape, 3); // Reduced batch size for better reliability
   const scrapedRaw = [];
-  console.log(`🔄 Starting scraping in ${batches.length} batches of 5...`);
+  console.log(`🔄 Starting scraping in ${batches.length} batches of 3...`);
   
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
@@ -133,12 +133,15 @@ export default async function handler(req, res) {
     const batchTime = Date.now() - batchStart;
     console.log(`✅ Batch ${batchIndex + 1} completed in ${batchTime}ms`);
     
-    // Check if we're approaching timeout (50s warning for 60s limit)
+    // Check if we're approaching timeout (45s warning for 60s limit)
     const elapsed = Date.now() - startTime;
-    if (elapsed > 50000) {
+    if (elapsed > 45000) {
       console.warn(`⚠️ Approaching timeout limit at ${elapsed}ms, stopping early`);
       break;
     }
+    
+    // Add small delay between batches to prevent overwhelming
+    await new Promise(r => setTimeout(r, 100));
   }
 
   // 3. Cleaned version (preserve brand/permalink/rank)
