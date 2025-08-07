@@ -50,17 +50,58 @@
   runBtn.onclick = async()=>{
     const keyword=kwInput.value.trim(), location=locInput.value.trim();
     if(!keyword||!location){alert("Need keyword and location");return;}
-    statusEl.textContent="Running search…"; output.innerHTML="";
+    
+    const startTime = Date.now();
+    console.log(`🚀 Starting search: "${keyword}" in "${location}"`);
+    statusEl.textContent="Running search…"; 
+    output.innerHTML="<div style='padding: 20px; text-align: center; color: #666;'>🔍 Searching...</div>";
+    
     try{
-      const resp=await fetch("/api/run-search",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({q:keyword,location})});
-      if(!resp.ok){const err=await resp.json();statusEl.textContent=`Error: ${err.error||resp.status}`;return;}
+      console.log("📡 Sending request to /api/run-search...");
+      const resp=await fetch("/api/run-search",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({q:keyword,location})
+      });
+      
+      const responseTime = Date.now() - startTime;
+      console.log(`⏱️ Response received in ${responseTime}ms, status: ${resp.status}`);
+      
+      if(!resp.ok){
+        const errorText = await resp.text();
+        console.error(`❌ HTTP ${resp.status}:`, errorText);
+        
+        let errorMsg;
+        try {
+          const err = JSON.parse(errorText);
+          errorMsg = err.error || `HTTP ${resp.status}`;
+        } catch {
+          errorMsg = `HTTP ${resp.status}: ${errorText.slice(0, 100)}`;
+        }
+        
+        statusEl.textContent = `Error: ${errorMsg}`;
+        output.innerHTML = `<div style='padding: 20px; color: #f87171;'>❌ ${errorMsg}</div>`;
+        return;
+      }
+      
       const data=await resp.json();
-      statusEl.textContent=`Got ${data.results?.length||0} results`;
+      console.log(`✅ Search completed:`, {
+        results: data.results?.length || 0,
+        timing: data.timing,
+        successful: data.results?.filter(r => !r.error).length || 0
+      });
+      
+      statusEl.textContent=`Got ${data.results?.length||0} results in ${responseTime}ms`;
       renderTable(data.results||[]);
       lastResults=data.results||[]; lastQuery=keyword; lastLoc=location;
       saveLoadBtn.textContent="Save Search";
-    }catch(e){statusEl.textContent="Fetch error";console.warn(e);}
+      
+    }catch(e){
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ Fetch error after ${elapsed}ms:`, e);
+      statusEl.textContent=`Fetch error (${elapsed}ms)`;
+      output.innerHTML = `<div style='padding: 20px; color: #f87171;'>❌ Network error: ${e.message}</div>`;
+    }
   };
 
   /* ───── save / load ───── */
