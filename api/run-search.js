@@ -97,54 +97,64 @@ export default async function handler(req, res) {
   const limitedToScrape = toScrape.slice(0, 12);
   console.log(`🎯 ${limitedToScrape.length} URLs to scrape after filtering (removed ${rawResults.length - toScrape.length} blacklisted, limited to top 12)`);
 
-  // 2. Scrape SEO for each URL (batching)
-  const batches = chunk(limitedToScrape, 2); // Further reduced batch size
+  // 2. Scrape SEO for all URLs in parallel with race conditions
+  console.log(`🔄 Starting parallel scraping of ${limitedToScrape.length} URLs...`);
+  const scrapeStart = Date.now();
   const scrapedRaw = [];
-  console.log(`🔄 Starting scraping in ${batches.length} batches of 2...`);
   
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-    const batchStart = Date.now();
-    console.log(`📦 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} URLs)...`);
-    
-    const settled = await Promise.allSettled(batch.map((o) => scrapeSEO(o.link)));
-    
-    settled.forEach((p, i) => {
-      const orig = batch[i];
-      if (p.status === "fulfilled") {
-        const result = p.value;
-        console.log(`✅ Scraped: ${orig.brand} (${result.responseTimeMs}ms)`);
-        scrapedRaw.push({
-          ...result,
-          brand: orig.brand || domainFromUrl(result.finalUrl),
-          permalink: result.finalUrl,
-          rank: orig.rank,
-        });
-      } else {
-        console.error(`❌ Scrape failed: ${orig.brand} - ${p.reason?.message}`);
-        scrapedRaw.push({
-          finalUrl: orig.link,
-          brand: orig.brand || domainFromUrl(orig.link),
-          permalink: orig.link,
-          rank: orig.rank,
-          error: p.reason?.message || "scrape failure",
-        });
-      }
-    });
-    
-    const batchTime = Date.now() - batchStart;
-    console.log(`✅ Batch ${batchIndex + 1} completed in ${batchTime}ms`);
-    
-    // More aggressive timeout check (40s warning for 60s limit)
-    const elapsed = Date.now() - startTime;
-    if (elapsed > 40000) {
-      console.warn(`⚠️ Approaching timeout limit at ${elapsed}ms, stopping early`);
-      break;
+  // Create a promise for each URL that includes a timeout
+  const scrapePromises = limitedToScrape.map(async (site) => {
+    const siteStart = Date.now();
+    try {
+      // Race between the scrape and a 15-second timeout
+      const result = await Promise.race([
+        scrapeSEO(site.link),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Site took too long")), 15000)
+        )
+      ]);
+      
+      console.log(`✅ Scraped: ${site.brand} (${Date.now() - siteStart}ms)`);
+      return {
+        ...result,
+        brand: site.brand || domainFromUrl(result.finalUrl),
+        permalink: result.finalUrl,
+        rank: site.rank,
+      };
+    } catch (error) {
+      console.error(`❌ Scrape failed: ${site.brand} - ${error.message}`);
+      return {
+        finalUrl: site.link,
+        brand: site.brand || domainFromUrl(site.link),
+        permalink: site.link,
+        rank: site.rank,
+        error: error.message || "scrape failure",
+      };
     }
-    
-    // Add small delay between batches to prevent overwhelming
-    await new Promise(r => setTimeout(r, 50));
-  }
+  });
+
+  // Wait for all scrapes to complete or timeout
+  const results = await Promise.race([
+    Promise.all(scrapePromises),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Global timeout")), 35000)
+    )
+  ]).catch(error => {
+    console.warn(`⚠️ Global timeout reached: ${error.message}`);
+    return scrapePromises.map(p => p.catch(e => e)); // Return partial results
+  });
+
+  // Add successful results to scrapedRaw
+  results.forEach(result => {
+    if (result instanceof Error) {
+      console.error(`❌ Failed to get result: ${result.message}`);
+    } else {
+      scrapedRaw.push(result);
+    }
+  });
+
+  const scrapeTime = Date.now() - scrapeStart;
+  console.log(`✅ Parallel scraping completed in ${scrapeTime}ms`);
 
   // 3. Cleaned version (preserve brand/permalink/rank)
   const cleaned = scrapedRaw.map((r) => {
