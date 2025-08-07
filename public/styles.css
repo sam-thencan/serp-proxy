@@ -90,6 +90,7 @@ button:hover{filter:brightness(1.07)}
 button.secondary{background:#10b981}
 button.refresh-btn{padding:6px 14px;font-size:13px;background:#2d3748}
 button.wide{min-width:110px}
+#exportBtn{display:none}
 
 /* status text */
 .meta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px;margin-top:6px}

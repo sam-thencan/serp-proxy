@@ -10,6 +10,7 @@
   const saveLoadBtn     = $("saveLoadBtn");
   const refreshBtn      = $("refreshBtn");
   const toggleListicles = $("toggleListicles");
+  const exportBtn       = $("exportBtn");
   const statusEl        = $("status");
   const output          = $("output");
 
@@ -107,6 +108,9 @@
         toggleListicles.style.display = "none";
       }
       
+      // Show export button when we have results
+      exportBtn.style.display = data.results?.length ? "inline-block" : "none";
+      
     }catch(e){
       const elapsed = Date.now() - startTime;
       console.error(`❌ Fetch error after ${elapsed}ms:`, e);
@@ -140,6 +144,59 @@
       const stats = lastResults.filter(r => r.isBlacklisted).length;
       toggleListicles.textContent = showListicles ? "Hide Listicles" : `Show Listicles (${stats})`;
     }
+  };
+
+  /* ───── CSV export ───── */
+  exportBtn.onclick = () => {
+    if (!lastResults || !lastQuery || !lastLoc) {
+      alert("No search results to export");
+      return;
+    }
+
+    console.log("📊 Exporting CSV...");
+    
+    // Choose which results to export based on current view
+    const resultsToExport = showListicles ? lastResults : lastResults.filter(r => !r.isBlacklisted);
+    
+    // CSV headers
+    const headers = [
+      "Rank", "Brand", "URL", "Title", "Meta Description", "H1", 
+      "Word Count", "Response Time (ms)", "Type", "Query", "Location"
+    ];
+    
+    // Convert results to CSV rows
+    const rows = resultsToExport.map(r => [
+      r.rank || "",
+      `"${(r.brand || "").replace(/"/g, '""')}"`,
+      `"${(r.permalink || r.finalUrl || "").replace(/"/g, '""')}"`,
+      `"${(r.title || "").replace(/"/g, '""')}"`,
+      `"${(r.metaDescription || "").replace(/"/g, '""')}"`,
+      `"${(r.h1 || "").replace(/"/g, '""')}"`,
+      r.wordCount || "",
+      r.responseTimeMs || "",
+      r.isBlacklisted ? "Filtered" : "Competitor",
+      `"${lastQuery.replace(/"/g, '""')}"`,
+      `"${lastLoc.replace(/"/g, '""')}"`
+    ]);
+    
+    // Combine headers and rows
+    const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    
+    const filename = `seo-analysis-${lastQuery.replace(/\s+/g, "-")}-${new Date().toISOString().split("T")[0]}.csv`;
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log(`✅ CSV exported: ${filename} (${resultsToExport.length} rows)`);
   };
 
   /* refresh */
