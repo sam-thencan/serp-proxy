@@ -222,20 +222,18 @@
     
     try{
       statusEl.textContent = `Retrying ${row.brand}…`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(()=>controller.abort(), 30000);
-      const resp = await fetch(row.permalink, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      const html = await resp.text();
-      // very light inline parse for quick update
-      const title = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)||[])[1]||'';
-      const metaM = /<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["'][^>]*>/i.exec(html) || /<meta[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["'][^>]*>/i.exec(html) || [];
-      const textOnly = html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
-      row.title = title;
-      row.metaDescription = metaM[1]||'';
-      row.h1 = row.h1 || '';
-      row.wordCount = (textOnly.match(/\b\w+\b/g)||[]).length;
-      row.responseTimeMs = row.responseTimeMs || '';
+      const resp = await fetch('/api/retry-scrape', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ url: row.permalink || row.finalUrl })
+      });
+      const data = await resp.json();
+      const r = data.result || {};
+      if(!resp.ok || r.error){ throw new Error(r.error || `HTTP ${resp.status}`); }
+      row.title = r.title || row.title;
+      row.metaDescription = r.metaDescription || row.metaDescription;
+      row.h1 = r.h1 || row.h1;
+      row.wordCount = r.wordCount || row.wordCount;
+      row.responseTimeMs = r.responseTimeMs || row.responseTimeMs;
       row.error = undefined;
       renderTable(lastResults);
       statusEl.textContent = `Retried ${row.brand}`;
