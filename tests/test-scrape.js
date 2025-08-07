@@ -1,4 +1,4 @@
-import { scrapeSEO } from "../api/run-search.js"; // adjust path if needed
+import { scrapeSEO } from "../lib/scrape.js";
 
 (async () => {
   const urls = [
