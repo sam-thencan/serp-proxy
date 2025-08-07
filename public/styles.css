@@ -120,6 +120,19 @@ a:hover{text-decoration:underline}
              border-radius:8px;padding:14px;margin-bottom:16px;overflow:auto}
 pre{background:#0e1a3b;color:#f0f8ff;padding:14px;border-radius:8px;font-size:12px;max-height:360px;overflow:auto}
 
+/* ───── Blacklisted rows styling ───── */
+.blacklisted-row{
+  opacity:0.6;
+  background:rgba(251,191,36,.08);
+}
+.blacklisted-row td{
+  color:var(--muted);
+  font-style:italic;
+}
+.blacklisted-row .rank-badge{
+  background:linear-gradient(135deg,#f59e0b,#d97706);
+}
+
 /* responsive tweak */
 @media (max-width:1200px){
   .controls{flex-direction:column;align-items:stretch}

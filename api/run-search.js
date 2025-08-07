@@ -86,10 +86,12 @@ export default async function handler(req, res) {
   filterTime = Date.now() - filterStart;
   console.log(`✅ Blacklist filtering completed in ${filterTime}ms`);
 
-  // filter out blacklisted entries (listicles, directories, socials)
-  const toScrape = toScrapeWithMeta
-    .filter((o) => o.link && !o.blacklisted)
-    .map((o) => ({ link: o.link, brand: o.brand, rank: o.rank }));
+  // Prepare both filtered and unfiltered lists
+  const allToScrape = toScrapeWithMeta
+    .filter((o) => o.link)
+    .map((o) => ({ link: o.link, brand: o.brand, rank: o.rank, isBlacklisted: o.blacklisted }));
+  
+  const toScrape = allToScrape.filter((o) => !o.isBlacklisted);
 
   console.log(`🎯 ${toScrape.length} URLs to scrape after filtering (removed ${rawResults.length - toScrape.length} blacklisted)`);
 
@@ -155,8 +157,27 @@ export default async function handler(req, res) {
       h1Raw: r.h1Raw,
       h1: cleanText(r.h1Raw, 100),
       wordCount: r.wordCount,
+      isBlacklisted: false,
     };
   });
+
+  // Add blacklisted entries (with minimal data)
+  const blacklistedEntries = allToScrape
+    .filter(o => o.isBlacklisted)
+    .map(o => ({
+      finalUrl: o.link,
+      permalink: o.link,
+      brand: o.brand,
+      rank: o.rank,
+      title: `${o.brand} (Filtered: Listicle/Directory)`,
+      metaDescription: "This result was filtered as a listicle, directory, or social media page",
+      h1: "",
+      wordCount: 0,
+      responseTimeMs: 0,
+      isBlacklisted: true,
+    }));
+
+  const allResults = [...cleaned, ...blacklistedEntries].sort((a, b) => a.rank - b.rank);
 
   // Final timing and response
   const totalTime = Date.now() - startTime;
@@ -177,7 +198,13 @@ export default async function handler(req, res) {
       scraped_raw: scrapedRaw,
       cleaned,
     },
-    results: cleaned,
+    results: allResults,
+    stats: {
+      total: allResults.length,
+      scraped: cleaned.length,
+      blacklisted: blacklistedEntries.length,
+      successful: cleaned.filter(r => !r.error).length,
+    },
   });
 }
 

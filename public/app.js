@@ -6,14 +6,16 @@
   const kwInput      = $("kwInput");
   const locInput     = $("locInput");
   const suggestions  = $("suggestions");
-  const runBtn       = $("runBtn");
-  const saveLoadBtn  = $("saveLoadBtn");
-  const refreshBtn   = $("refreshBtn");
-  const statusEl     = $("status");
-  const output       = $("output");
+  const runBtn          = $("runBtn");
+  const saveLoadBtn     = $("saveLoadBtn");
+  const refreshBtn      = $("refreshBtn");
+  const toggleListicles = $("toggleListicles");
+  const statusEl        = $("status");
+  const output          = $("output");
 
   /* state */
   let locTimer, lastResults = null, lastQuery = null, lastLoc = null;
+  let showListicles = false;
   const SAVED_KEY = "serpSearchCache_v1";
 
   /* ───── autocomplete ───── */
@@ -91,10 +93,19 @@
         successful: data.results?.filter(r => !r.error).length || 0
       });
       
-      statusEl.textContent=`Got ${data.results?.length||0} results in ${responseTime}ms`;
+      const stats = data.stats || {};
+      statusEl.textContent=`Got ${stats.scraped||0} results (${stats.blacklisted||0} filtered) in ${responseTime}ms`;
       renderTable(data.results||[]);
       lastResults=data.results||[]; lastQuery=keyword; lastLoc=location;
       saveLoadBtn.textContent="Save Search";
+      
+      // Update toggle button text based on filtered results
+      if (stats.blacklisted > 0) {
+        toggleListicles.textContent = showListicles ? "Hide Listicles" : `Show Listicles (${stats.blacklisted})`;
+        toggleListicles.style.display = "inline-block";
+      } else {
+        toggleListicles.style.display = "none";
+      }
       
     }catch(e){
       const elapsed = Date.now() - startTime;
@@ -121,6 +132,16 @@
     statusEl.textContent="Search saved"; saveLoadBtn.textContent="Load Search";
   };
 
+  /* ───── toggle listicles ───── */
+  toggleListicles.onclick = () => {
+    showListicles = !showListicles;
+    if (lastResults) {
+      renderTable(lastResults);
+      const stats = lastResults.filter(r => r.isBlacklisted).length;
+      toggleListicles.textContent = showListicles ? "Hide Listicles" : `Show Listicles (${stats})`;
+    }
+  };
+
   /* refresh */
   refreshBtn.onclick = ()=> location.reload();
 
@@ -128,6 +149,10 @@
   const esc = (s="")=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   function renderTable(rows){
     if(!Array.isArray(rows))return;
+    
+    // Filter rows based on toggle state
+    const filteredRows = showListicles ? rows : rows.filter(r => !r.isBlacklisted);
+    
     output.innerHTML = `
       <div class="table-wrapper">
         <table>
@@ -137,8 +162,8 @@
               <th>Title</th><th>Meta</th><th>H1</th><th>Words</th><th>Resp (ms)</th>
             </tr>
           </thead><tbody>${
-            rows.map(r=>`
-              <tr>
+            filteredRows.map(r=>`
+              <tr${r.isBlacklisted ? ' class="blacklisted-row"' : ''}>
                 <td><div class="rank-badge">${r.rank||""}</div></td>
                 <td>${esc(r.brand)}</td>
                 <td class="permalink"><a href="${r.permalink||r.finalUrl||""}" target="_blank" rel="noopener">${esc(r.permalink||r.finalUrl||"")}</a></td>
