@@ -209,12 +209,10 @@
   document.addEventListener('click', async (e)=>{
     const tr = e.target.closest('tr');
     if(!tr || !output.contains(tr)) return;
-    if(!tr.innerHTML.includes('badge-timeout')) return;
+    if(!(e.target.classList && e.target.classList.contains('retry-link'))) return;
     const idx = Array.from(tr.parentElement.children).indexOf(tr);
     const currentRows = showListicles ? lastResults : lastResults.filter(r=>!r.isBlacklisted);
-    const successful = currentRows.filter(r=>!r.error);
-    const errored = currentRows.filter(r=>r.error);
-    const row = [...successful, ...errored][idx];
+    const row = currentRows[idx];
     if(!row || !row.permalink) return;
     
     const confirmRetry = confirm('Retry fetching this site? This may take up to 30 seconds.');
@@ -247,10 +245,8 @@
     // Filter rows based on toggle state
     const filteredRows = showListicles ? rows : rows.filter(r => !r.isBlacklisted);
     
-    // Move errored/timeouts after successful rows but keep rank visible
-    const successful = filteredRows.filter(r=>!r.error);
-    const errored = filteredRows.filter(r=>r.error).map(r=>({ ...r, timedOut: /Timeout/i.test(r.error||"") }));
-    const finalRows = [...successful, ...errored];
+    // Keep original SERP order; only annotate timed-out rows
+    const finalRows = filteredRows.map(r=>({ ...r, timedOut: /Timeout/i.test(r.error||"") }));
     
     output.innerHTML = `
       <div class="table-wrapper">
@@ -264,7 +260,7 @@
             finalRows.map(r=>`
               <tr${r.isBlacklisted ? ' class="blacklisted-row"' : ''}>
                 <td><div class="rank-badge">${r.rank||""}</div></td>
-                <td>${esc(r.brand)}${r.timedOut? ' <span class="badge-timeout" title="Timed out. Click to retry below.">TIMED OUT</span>':''}</td>
+                <td>${esc(r.brand)}${r.error? ` <button class="retry-link" data-url="${r.permalink||r.finalUrl||''}">Retry</button>`:''}${r.timedOut? ' <span class="badge-timeout" title="Timed out. Click Retry to fetch again.">TIMED OUT</span>':''}</td>
                 <td class="permalink"><a href="${r.permalink||r.finalUrl||""}" target="_blank" rel="noopener">${esc(r.permalink||r.finalUrl||"")}</a></td>
                 <td>${esc(r.title)}</td>
                 <td>${esc(r.metaDescription)}</td>
@@ -273,7 +269,7 @@
                 <td>${r.responseTimeMs||""}</td>
               </tr>`).join("")
           }</tbody></table>
-        ${errored.length? `<div class="retry-panel">Some sites timed out. Select a row and click Retry to fetch again (30s max).</div>`:''}
+        ${finalRows.some(x=>x.error)? `<div class="retry-panel">Some sites timed out. Click the Retry button next to the brand to fetch again (30s max).</div>`:''}
       </div>`;
   }
 })();

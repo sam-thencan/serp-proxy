@@ -137,6 +137,8 @@ pre{background:#0e1a3b;color:#f0f8ff;padding:14px;border-radius:8px;font-size:12
 /* timeout badge */
 .badge-timeout{background:rgba(239,68,68,.15);color:#fca5a5;font-size:10px;font-weight:700;border-radius:999px;padding:2px 6px;margin-left:6px}
 .retry-panel{margin-top:8px;color:#fbbf24;font-size:12px}
+.retry-link{background:#374151;color:#e5e7eb;border:none;border-radius:999px;padding:2px 8px;font-size:11px;margin-left:6px;cursor:pointer}
+.retry-link:hover{filter:brightness(1.1)}
 
 /* responsive tweak */
 @media (max-width:1200px){
