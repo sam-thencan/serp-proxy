@@ -98,7 +98,12 @@ export default async function handler(req, res) {
   console.log(`🎯 ${limitedToScrape.length} URLs to scrape after filtering (removed ${rawResults.length - toScrape.length} blacklisted, limited to top 12)`);
 
   // 2. Scrape SEO for all URLs in parallel with race conditions
-  console.log(`🔄 Starting parallel scraping of ${limitedToScrape.length} URLs...`);
+  console.log(`
+🔄 Starting parallel scraping:
+  Total URLs: ${limitedToScrape.length}
+  Memory: ${JSON.stringify(process.memoryUsage(), null, 2)}
+  Time elapsed: ${Date.now() - startTime}ms
+`);
   const scrapeStart = Date.now();
   const scrapedRaw = [];
   
@@ -134,13 +139,19 @@ export default async function handler(req, res) {
   });
 
   // Wait for all scrapes to complete or timeout
+  console.log(`⏳ Waiting for scrapes to complete (35s timeout)...`);
   const results = await Promise.race([
     Promise.all(scrapePromises),
     new Promise((_, reject) => 
       setTimeout(() => reject(new Error("Global timeout")), 35000)
     )
   ]).catch(error => {
-    console.warn(`⚠️ Global timeout reached: ${error.message}`);
+    const elapsed = Date.now() - scrapeStart;
+    console.warn(`⚠️ Global timeout reached:
+    Error: ${error.message}
+    Time elapsed: ${elapsed}ms
+    Memory: ${JSON.stringify(process.memoryUsage(), null, 2)}
+    `);
     return scrapePromises.map(p => p.catch(e => e)); // Return partial results
   });
 
@@ -154,7 +165,13 @@ export default async function handler(req, res) {
   });
 
   const scrapeTime = Date.now() - scrapeStart;
-  console.log(`✅ Parallel scraping completed in ${scrapeTime}ms`);
+  console.log(`
+✅ Parallel scraping completed:
+  Time taken: ${scrapeTime}ms
+  Total time: ${Date.now() - startTime}ms
+  Success rate: ${scrapedRaw.filter(r => !r.error).length}/${limitedToScrape.length}
+  Memory: ${JSON.stringify(process.memoryUsage(), null, 2)}
+`);
 
   // 3. Cleaned version (preserve brand/permalink/rank)
   const cleaned = scrapedRaw.map((r) => {
