@@ -204,11 +204,55 @@
 
   /* ───── renderer ───── */
   const esc = (s="")=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  
+  // Delegate click handler for retrying timed-out rows
+  document.addEventListener('click', async (e)=>{
+    const tr = e.target.closest('tr');
+    if(!tr || !output.contains(tr)) return;
+    if(!tr.innerHTML.includes('badge-timeout')) return;
+    const idx = Array.from(tr.parentElement.children).indexOf(tr);
+    const currentRows = showListicles ? lastResults : lastResults.filter(r=>!r.isBlacklisted);
+    const successful = currentRows.filter(r=>!r.error);
+    const errored = currentRows.filter(r=>r.error);
+    const row = [...successful, ...errored][idx];
+    if(!row || !row.permalink) return;
+    
+    const confirmRetry = confirm('Retry fetching this site? This may take up to 30 seconds.');
+    if(!confirmRetry) return;
+    
+    try{
+      statusEl.textContent = `Retrying ${row.brand}…`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(()=>controller.abort(), 30000);
+      const resp = await fetch(row.permalink, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const html = await resp.text();
+      // very light inline parse for quick update
+      const title = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)||[])[1]||'';
+      const metaM = /<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["'][^>]*>/i.exec(html) || /<meta[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["'][^>]*>/i.exec(html) || [];
+      const textOnly = html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+      row.title = title;
+      row.metaDescription = metaM[1]||'';
+      row.h1 = row.h1 || '';
+      row.wordCount = (textOnly.match(/\b\w+\b/g)||[]).length;
+      row.responseTimeMs = row.responseTimeMs || '';
+      row.error = undefined;
+      renderTable(lastResults);
+      statusEl.textContent = `Retried ${row.brand}`;
+    }catch(err){
+      statusEl.textContent = `Retry failed: ${err.message}`;
+    }
+  });
   function renderTable(rows){
     if(!Array.isArray(rows))return;
     
     // Filter rows based on toggle state
     const filteredRows = showListicles ? rows : rows.filter(r => !r.isBlacklisted);
+    
+    // Move errored/timeouts after successful rows but keep rank visible
+    const successful = filteredRows.filter(r=>!r.error);
+    const errored = filteredRows.filter(r=>r.error).map(r=>({ ...r, timedOut: /Timeout/i.test(r.error||"") }));
+    const finalRows = [...successful, ...errored];
     
     output.innerHTML = `
       <div class="table-wrapper">
@@ -219,10 +263,10 @@
               <th>Title</th><th>Meta</th><th>H1</th><th>Words</th><th>Resp (ms)</th>
             </tr>
           </thead><tbody>${
-            filteredRows.map(r=>`
+            finalRows.map(r=>`
               <tr${r.isBlacklisted ? ' class="blacklisted-row"' : ''}>
                 <td><div class="rank-badge">${r.rank||""}</div></td>
-                <td>${esc(r.brand)}</td>
+                <td>${esc(r.brand)}${r.timedOut? ' <span class="badge-timeout" title="Timed out. Click to retry below.">TIMED OUT</span>':''}</td>
                 <td class="permalink"><a href="${r.permalink||r.finalUrl||""}" target="_blank" rel="noopener">${esc(r.permalink||r.finalUrl||"")}</a></td>
                 <td>${esc(r.title)}</td>
                 <td>${esc(r.metaDescription)}</td>
@@ -231,6 +275,7 @@
                 <td>${r.responseTimeMs||""}</td>
               </tr>`).join("")
           }</tbody></table>
+        ${errored.length? `<div class="retry-panel">Some sites timed out. Select a row and click Retry to fetch again (30s max).</div>`:''}
       </div>`;
   }
 })();

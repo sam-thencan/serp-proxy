@@ -111,13 +111,22 @@ export default async function handler(req, res) {
   const scrapePromises = limitedToScrape.map(async (site) => {
     const siteStart = Date.now();
     try {
-      // Race between the scrape and a 15-second timeout
-      const result = await Promise.race([
-        scrapeSEO(site.link),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Site took too long")), 15000)
-        )
+      // First attempt (fast path)
+      const fastAttempt = await Promise.race([
+        scrapeSEO(site.link, { fetchTimeoutMs: 6000, textTimeoutMs: 3000 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Site took too long")), 15000))
       ]);
+
+      let result = fastAttempt;
+
+      // If timed out or fetch failed, do a second attempt with longer window
+      if (result?.error?.includes('Timeout') || result?.error?.includes('fetch failed')) {
+        console.warn(`⏳ Retrying stubborn site (10s window): ${site.brand}`);
+        result = await Promise.race([
+          scrapeSEO(site.link, { fetchTimeoutMs: 10000, textTimeoutMs: 5000 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Retry took too long")), 10000))
+        ]).catch(e => ({ finalUrl: site.link, brand: site.brand, permalink: site.link, rank: site.rank, error: e.message }));
+      }
       
       console.log(`✅ Scraped: ${site.brand} (${Date.now() - siteStart}ms)`);
       return {
