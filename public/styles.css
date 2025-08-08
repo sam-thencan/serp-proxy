@@ -140,6 +140,9 @@ pre{background:#0e1a3b;color:#f0f8ff;padding:14px;border-radius:8px;font-size:12
 .retry-link{background:#374151;color:#e5e7eb;border:none;border-radius:999px;padding:2px 8px;font-size:11px;margin-left:6px;cursor:pointer}
 .retry-link:hover{filter:brightness(1.1)}
 
+/* skeleton rows */
+.skeleton{color:#6b7280;background:rgba(255,255,255,.04);border-radius:4px;display:inline-block;padding:6px 8px}
+
 /* responsive tweak */
 @media (max-width:1200px){
   .controls{flex-direction:column;align-items:stretch}

@@ -60,56 +60,40 @@
     output.innerHTML="<div style='padding: 20px; text-align: center; color: #666;'>🔍 Searching...</div>";
     
     try{
-      console.log("📡 Sending request to /api/run-search...");
-      const resp=await fetch("/api/run-search",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({q:keyword,location})
+      console.log("📡 Connecting to /api/run-search-sse...");
+      const url = `/api/run-search-sse?q=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`;
+      const es = new EventSource(url);
+      const results = [];
+      const startAt = Date.now();
+      statusEl.textContent = "Fetching results…";
+      output.innerHTML = renderSkeleton();
+
+      es.addEventListener('result', (evt)=>{
+        const row = JSON.parse(evt.data);
+        // merge by rank
+        const idx = results.findIndex(r=>r.rank===row.rank);
+        if(idx>=0) results[idx] = { ...results[idx], ...row };
+        else results.push(row);
+        renderTable(results.sort((a,b)=>a.rank-b.rank));
+      });
+
+      es.addEventListener('done', (evt)=>{
+        const info = JSON.parse(evt.data);
+        const responseTime = Date.now()-startAt;
+        statusEl.textContent = `Got ${info.successful} results (${info.blacklisted} filtered) in ${responseTime}ms`;
+        lastResults = results.sort((a,b)=>a.rank-b.rank);
+        saveLoadBtn.textContent="Save Search";
+        exportBtn.style.display = lastResults.length? "inline-block":"none";
+        es.close();
+      });
+
+      es.addEventListener('error', (evt)=>{
+        console.error('SSE error', evt);
+        statusEl.textContent = 'Stream error';
+        es.close();
       });
       
-      const responseTime = Date.now() - startTime;
-      console.log(`⏱️ Response received in ${responseTime}ms, status: ${resp.status}`);
-      
-      if(!resp.ok){
-        const errorText = await resp.text();
-        console.error(`❌ HTTP ${resp.status}:`, errorText);
-        
-        let errorMsg;
-        try {
-          const err = JSON.parse(errorText);
-          errorMsg = err.error || `HTTP ${resp.status}`;
-        } catch {
-          errorMsg = `HTTP ${resp.status}: ${errorText.slice(0, 100)}`;
-        }
-        
-        statusEl.textContent = `Error: ${errorMsg}`;
-        output.innerHTML = `<div style='padding: 20px; color: #f87171;'>❌ ${errorMsg}</div>`;
-        return;
-      }
-      
-      const data=await resp.json();
-      console.log(`✅ Search completed:`, {
-        results: data.results?.length || 0,
-        timing: data.timing,
-        successful: data.results?.filter(r => !r.error).length || 0
-      });
-      
-      const stats = data.stats || {};
-      statusEl.textContent=`Got ${stats.scraped||0} results (${stats.blacklisted||0} filtered) in ${responseTime}ms`;
-      renderTable(data.results||[]);
-      lastResults=data.results||[]; lastQuery=keyword; lastLoc=location;
-      saveLoadBtn.textContent="Save Search";
-      
-      // Update toggle button text based on filtered results
-      if (stats.blacklisted > 0) {
-        toggleListicles.textContent = showListicles ? "Hide Listicles" : `Show Listicles (${stats.blacklisted})`;
-        toggleListicles.style.display = "inline-block";
-      } else {
-        toggleListicles.style.display = "none";
-      }
-      
-      // Show export button when we have results
-      exportBtn.style.display = data.results?.length ? "inline-block" : "none";
+      lastQuery=keyword; lastLoc=location;
       
     }catch(e){
       const elapsed = Date.now() - startTime;
@@ -271,5 +255,23 @@
           }</tbody></table>
         ${finalRows.some(x=>x.error)? `<div class="retry-panel">Some sites timed out. Click the Retry button next to the brand to fetch again (30s max).</div>`:''}
       </div>`;
+  }
+
+  function renderSkeleton(){
+    return `<div class="table-wrapper"><table><thead><tr>
+      <th class="rank-col">Rank</th><th>Brand</th><th>Permalink</th>
+      <th>Title</th><th>Meta</th><th>H1</th><th>Words</th><th>Resp (ms)</th>
+    </tr></thead><tbody>
+      ${Array.from({length:10}).map(()=>`<tr>
+        <td><div class="rank-badge">…</div></td>
+        <td class="skeleton">Loading…</td>
+        <td class="skeleton">Loading…</td>
+        <td class="skeleton">Loading…</td>
+        <td class="skeleton">Loading…</td>
+        <td class="skeleton">Loading…</td>
+        <td class="skeleton">…</td>
+        <td class="skeleton">…</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
   }
 })();
