@@ -15,7 +15,7 @@
   const output          = $("output");
 
   /* state */
-  let locTimer, lastResults = null, lastQuery = null, lastLoc = null;
+  let locTimer, lastResults = null, lastQuery = null, lastLoc = null, currentResults = [];
   let showListicles = false;
   const SAVED_KEY = "serpSearchCache_v1";
 
@@ -74,6 +74,7 @@
         const idx = results.findIndex(r=>r.rank===row.rank);
         if(idx>=0) results[idx] = { ...results[idx], ...row };
         else results.push(row);
+        currentResults = results.slice();
         renderTable(results.sort((a,b)=>a.rank-b.rank));
       });
 
@@ -82,6 +83,7 @@
         const responseTime = Date.now()-startAt;
         statusEl.textContent = `Got ${info.successful} results (${info.blacklisted} filtered) in ${responseTime}ms`;
         lastResults = results.sort((a,b)=>a.rank-b.rank);
+        currentResults = lastResults.slice();
         saveLoadBtn.textContent="Save Search";
         exportBtn.style.display = lastResults.length? "inline-block":"none";
         es.close();
@@ -123,9 +125,10 @@
   /* ───── toggle listicles ───── */
   toggleListicles.onclick = () => {
     showListicles = !showListicles;
-    if (lastResults) {
-      renderTable(lastResults);
-      const stats = lastResults.filter(r => r.isBlacklisted).length;
+    const base = (lastResults && lastResults.length) ? lastResults : currentResults;
+    if (base && base.length) {
+      renderTable(base);
+      const stats = base.filter(r => r.isBlacklisted).length;
       toggleListicles.textContent = showListicles ? "Hide Listicles" : `Show Listicles (${stats})`;
     }
   };
@@ -227,6 +230,13 @@
     
     // Filter rows based on toggle state
     const filteredRows = showListicles ? rows : rows.filter(r => !r.isBlacklisted);
+    // ensure we don't lose rows without rank during streaming
+    filteredRows.sort((a,b)=>{
+      if(a.rank && b.rank) return a.rank-b.rank;
+      if(a.rank) return -1;
+      if(b.rank) return 1;
+      return 0;
+    });
     
     // Keep original SERP order; only annotate timed-out rows
     const finalRows = filteredRows.map(r=>({ ...r, timedOut: /Timeout/i.test(r.error||"") }));
@@ -241,7 +251,7 @@
             </tr>
           </thead><tbody>${
             finalRows.map(r=>`
-              <tr${r.isBlacklisted ? ' class="blacklisted-row"' : ''}${r.error? ' class="row-failed"':''}>
+              <tr class="${r.isBlacklisted ? 'blacklisted-row ' : ''}${r.error ? 'row-failed' : ''}">
                 <td><div class="rank-badge">${r.rank||""}</div></td>
                 <td>${esc(r.brand)}${r.error? ` <button class="retry-link" data-url="${r.permalink||r.finalUrl||''}">Retry</button>`:''}${r.timedOut? ' <span class="badge-timeout" title="Timed out. Click Retry to fetch again.">TIMED OUT</span>':''}</td>
                 <td class="permalink"><a href="${r.permalink||r.finalUrl||""}" target="_blank" rel="noopener">${esc(r.permalink||r.finalUrl||"")}</a></td>
