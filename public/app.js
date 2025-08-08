@@ -199,9 +199,6 @@
     const row = currentRows[idx];
     if(!row || !row.permalink) return;
     
-    const confirmRetry = confirm('Retry fetching this site? This may take up to 30 seconds.');
-    if(!confirmRetry) return;
-    
     try{
       statusEl.textContent = `Retrying ${row.brand}…`;
       const resp = await fetch('/api/retry-scrape', {
@@ -221,6 +218,8 @@
       statusEl.textContent = `Retried ${row.brand}`;
     }catch(err){
       statusEl.textContent = `Retry failed: ${err.message}`;
+      row.error = `Failed: ${err.message}`;
+      renderTable(lastResults);
     }
   });
   function renderTable(rows){
@@ -242,7 +241,7 @@
             </tr>
           </thead><tbody>${
             finalRows.map(r=>`
-              <tr${r.isBlacklisted ? ' class="blacklisted-row"' : ''}>
+              <tr${r.isBlacklisted ? ' class="blacklisted-row"' : ''}${r.error? ' class="row-failed"':''}>
                 <td><div class="rank-badge">${r.rank||""}</div></td>
                 <td>${esc(r.brand)}${r.error? ` <button class="retry-link" data-url="${r.permalink||r.finalUrl||''}">Retry</button>`:''}${r.timedOut? ' <span class="badge-timeout" title="Timed out. Click Retry to fetch again.">TIMED OUT</span>':''}</td>
                 <td class="permalink"><a href="${r.permalink||r.finalUrl||""}" target="_blank" rel="noopener">${esc(r.permalink||r.finalUrl||"")}</a></td>
@@ -264,13 +263,13 @@
     </tr></thead><tbody>
       ${Array.from({length:10}).map(()=>`<tr>
         <td><div class="rank-badge">…</div></td>
-        <td class="skeleton">Loading…</td>
-        <td class="skeleton">Loading…</td>
-        <td class="skeleton">Loading…</td>
-        <td class="skeleton">Loading…</td>
-        <td class="skeleton">Loading…</td>
-        <td class="skeleton">…</td>
-        <td class="skeleton">…</td>
+        <td><span class="skeleton-pill"></span></td>
+        <td><span class="skeleton-pill wide"></span></td>
+        <td><span class="skeleton-pill mid"></span></td>
+        <td><span class="skeleton-pill mid"></span></td>
+        <td><span class="skeleton-pill short"></span></td>
+        <td><span class="skeleton-pill tiny"></span></td>
+        <td><span class="skeleton-pill tiny"></span></td>
       </tr>`).join('')}
     </tbody></table></div>`;
   }

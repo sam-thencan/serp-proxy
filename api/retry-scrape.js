@@ -18,10 +18,10 @@ export default async function handler(req, res) {
 
   try {
     const result = await scrapeSEO(url, {
-      fetchTimeoutMs: 10000, // allow up to 10s
-      textTimeoutMs: 5000,
-      retryFetchTimeoutMs: 10000,
-      retryTextTimeoutMs: 5000,
+      fetchTimeoutMs: 30000, // allow up to 30s for slower sites
+      textTimeoutMs: 8000,
+      retryFetchTimeoutMs: 30000,
+      retryTextTimeoutMs: 8000,
     });
 
     if (result.error) {
